@@ -18,7 +18,7 @@ using System.Windows.Forms;
 namespace cAlgo
 {
 
-    [Indicator(IsOverlay = true, TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
+    [Indicator(IsOverlay = true, TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public class IndicatorAlert : Indicator
     {
 
