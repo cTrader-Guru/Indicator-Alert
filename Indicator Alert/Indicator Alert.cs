@@ -1,12 +1,12 @@
-﻿/*  CTRADER GURU --> Template 1.0.6
+﻿/*  CTRADER GURU 
 
     Homepage    : https://ctrader.guru/
     Telegram    : https://t.me/ctraderguru
     Twitter     : https://twitter.com/cTraderGURU/
     Facebook    : https://www.facebook.com/ctrader.guru/
-    YouTube     : https://www.youtube.com/channel/UCKkgbw09Fifj65W5t5lHeCQ
+    YouTube     : https://www.youtube.com/cTraderGuru
     GitHub      : https://github.com/cTraderGURU/
-    TOS         : https://ctrader.guru/termini-del-servizio/
+    TOS         : https://ctrader.guru/terms-of-service/
 
 */
 
@@ -14,6 +14,8 @@ using System;
 using cAlgo.API;
 using System.Threading;
 using System.Windows.Forms;
+using System.Text.RegularExpressions;
+using System.Net;
 
 namespace cAlgo
 {
@@ -45,7 +47,7 @@ namespace cAlgo
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.1";
+        public const string VERSION = "1.0.2";
 
         #endregion
 
@@ -68,6 +70,15 @@ namespace cAlgo
 
         [Parameter("Flag Reset", Group = "Params", DefaultValue = 10, MinValue = 0)]
         public double FlagReset { get; set; }
+
+        [Parameter("Enabled?", Group = "Webhook", DefaultValue = false)]
+        public bool WebhookEnabled { get; set; }
+
+        [Parameter("API", Group = "Webhook", DefaultValue = "https://api.telegram.org/bot[ YOUR TOKEN ]/sendMessage")]
+        public string Webhook { get; set; }
+
+        [Parameter("POST params", Group = "Webhook", DefaultValue = "chat_id=[ @CHATID ]&text={0}")]
+        public string PostParams { get; set; }
 
         /// <summary>
         /// L'output primario, può essere modificato a seconda delle esigenze
@@ -151,7 +162,48 @@ namespace cAlgo
             // --> La popup non deve interrompere la logica delle API, apertura e chiusura
 
             new Thread(new ThreadStart(delegate { MessageBox.Show(mex, "BreakOut", MessageBoxButtons.OK, MessageBoxIcon.Information); })).Start();
+            _toWebHook(mex);
             Print(mex);
+
+        }
+
+
+        public void _toWebHook(string custom)
+        {
+
+            if (!WebhookEnabled || custom == null || custom.Trim().Length < 1)
+                return;
+
+            string messageformat = custom.Trim();
+
+            try
+            {
+                // --> Mi servono i permessi di sicurezza per il dominio, compreso i redirect
+                Uri myuri = new Uri(Webhook);
+
+                string pattern = string.Format("{0}://{1}/.*", myuri.Scheme, myuri.Host);
+
+                // --> Autorizzo tutte le pagine di questo dominio
+                Regex urlRegEx = new Regex(pattern);
+                WebPermission p = new WebPermission(NetworkAccess.Connect, urlRegEx);
+                p.Assert();
+
+                // --> Protocollo di sicurezza https://
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
+
+                using (WebClient wc = new WebClient())
+                {
+                    wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
+                    string HtmlResult = wc.UploadString(myuri, string.Format(PostParams, messageformat));
+                }
+
+            }
+            catch (Exception exc)
+            {
+
+                MessageBox.Show(exc.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+            }
 
         }
 
