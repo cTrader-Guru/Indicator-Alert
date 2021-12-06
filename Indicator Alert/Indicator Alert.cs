@@ -47,7 +47,7 @@ namespace cAlgo
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.2";
+        public const string VERSION = "1.0.3";
 
         #endregion
 
@@ -70,6 +70,9 @@ namespace cAlgo
 
         [Parameter("Flag Reset", Group = "Params", DefaultValue = 10, MinValue = 0)]
         public double FlagReset { get; set; }
+
+        [Parameter("Alert PopUp?", Group = "Params", DefaultValue = true)]
+        public bool PopUpEnabled { get; set; }
 
         [Parameter("Enabled?", Group = "Webhook", DefaultValue = false)]
         public bool WebhookEnabled { get; set; }
@@ -161,7 +164,8 @@ namespace cAlgo
 
             // --> La popup non deve interrompere la logica delle API, apertura e chiusura
 
-            new Thread(new ThreadStart(delegate { MessageBox.Show(mex, "BreakOut", MessageBoxButtons.OK, MessageBoxIcon.Information); })).Start();
+            if(PopUpEnabled) new Thread(new ThreadStart(delegate { MessageBox.Show(mex, "BreakOut", MessageBoxButtons.OK, MessageBoxIcon.Information); })).Start();
+            
             _toWebHook(mex);
             Print(mex);
 
@@ -197,8 +201,7 @@ namespace cAlgo
                     string HtmlResult = wc.UploadString(myuri, string.Format(PostParams, messageformat));
                 }
 
-            }
-            catch (Exception exc)
+            } catch (Exception exc)
             {
 
                 MessageBox.Show(exc.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
