@@ -6,7 +6,6 @@
     Facebook    : https://www.facebook.com/ctrader.guru/
     YouTube     : https://www.youtube.com/cTraderGuru
     GitHub      : https://github.com/cTraderGURU/
-    TOS         : https://ctrader.guru/terms-of-service/
 
 */
 
@@ -39,24 +38,15 @@ namespace cAlgo
 
         #region Identity
 
-        /// <summary>
-        /// Nome del prodotto, identificativo, da modificare con il nome della propria creazione
-        /// </summary>
         public const string NAME = "Indicator Alert";
 
-        /// <summary>
-        /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
-        /// </summary>
         public const string VERSION = "1.0.3";
 
         #endregion
 
         #region Params
 
-        /// <summary>
-        /// Identità del prodotto nel contesto di ctrader.guru
-        /// </summary>
-        [Parameter(NAME + " " + VERSION, Group = "Identity", DefaultValue = "https://ctrader.guru/product/indicator-alert/")]
+        [Parameter(NAME + " " + VERSION, Group = "Identity", DefaultValue = "https://www.google.com/search?q=ctrader+guru+indicator+alert")]
         public string ProductInfo { get; set; }
 
         [Parameter("Alert Source", Group = "Params")]
@@ -83,9 +73,6 @@ namespace cAlgo
         [Parameter("POST params", Group = "Webhook", DefaultValue = "chat_id=[ @CHATID ]&text={0}")]
         public string PostParams { get; set; }
 
-        /// <summary>
-        /// L'output primario, può essere modificato a seconda delle esigenze
-        /// </summary>
         [Output("Main")]
         public IndicatorDataSeries Result { get; set; }
 
@@ -101,28 +88,19 @@ namespace cAlgo
 
         #region Indicator Events
 
-        /// <summary>
-        /// Viene generato all'avvio dell'indicatore, si inizializza l'indicatore
-        /// </summary>
         protected override void Initialize()
         {
 
-            // --> Stampo nei log la versione corrente
             Print("{0} : {1}", NAME, VERSION);
 
         }
 
-        /// <summary>
-        /// Generato ad ogni tick, vengono effettuati i calcoli dell'indicatore
-        /// </summary>
-        /// <param name="index">L'indice della candela in elaborazione</param>
         public override void Calculate(int index)
         {
 
             if (!IsLastBar)
                 return;
 
-            // --> Ad ogni cambio candela resetto l'alert flag, è una semplice sicurezza ulteriore
             if (index != LastIndex)
             {
 
@@ -132,15 +110,12 @@ namespace cAlgo
 
             }
 
-            // --> Tento di resettare l'alert per eventuali nuovi segnali nella stessa direzione
             if ((MonitoringFor == WaitingLevel.Up && Source.LastValue > (LevelUnder + FlagReset)) || (MonitoringFor == WaitingLevel.Down && Source.LastValue < (LevelOver - FlagReset)))
                 MonitoringFor = WaitingLevel.Neutral;
 
-            // --> Controllo se devo mettere in alert
             if ((MonitoringFor != WaitingLevel.Down && Source.LastValue > LevelOver) || (MonitoringFor != WaitingLevel.Up && Source.LastValue < LevelUnder))
-                _alert();
+                Alert();
 
-            // --> Aggiorno il flag
             MonitoringFor = (Source.LastValue > LevelOver) ? WaitingLevel.Down : (Source.LastValue < LevelUnder) ? WaitingLevel.Up : MonitoringFor;
 
         }
@@ -149,10 +124,7 @@ namespace cAlgo
 
         #region Private Methods
 
-        /// <summary>
-        /// Gestisce le popup per gli alert
-        /// </summary>
-        private void _alert()
+        private void Alert()
         {
 
             if (RunningMode != RunningMode.RealTime || AlertInThisBar)
@@ -162,17 +134,16 @@ namespace cAlgo
 
             AlertInThisBar = true;
 
-            // --> La popup non deve interrompere la logica delle API, apertura e chiusura
+            if (PopUpEnabled)
+                new Thread(new ThreadStart(delegate { MessageBox.Show(mex, "BreakOut", MessageBoxButtons.OK, MessageBoxIcon.Information); })).Start();
 
-            if(PopUpEnabled) new Thread(new ThreadStart(delegate { MessageBox.Show(mex, "BreakOut", MessageBoxButtons.OK, MessageBoxIcon.Information); })).Start();
-            
-            _toWebHook(mex);
+            ToWebHook(mex);
             Print(mex);
 
         }
 
 
-        public void _toWebHook(string custom)
+        public void ToWebHook(string custom)
         {
 
             if (!WebhookEnabled || custom == null || custom.Trim().Length < 1)
@@ -182,17 +153,15 @@ namespace cAlgo
 
             try
             {
-                // --> Mi servono i permessi di sicurezza per il dominio, compreso i redirect
+
                 Uri myuri = new Uri(Webhook);
 
                 string pattern = string.Format("{0}://{1}/.*", myuri.Scheme, myuri.Host);
 
-                // --> Autorizzo tutte le pagine di questo dominio
                 Regex urlRegEx = new Regex(pattern);
                 WebPermission p = new WebPermission(NetworkAccess.Connect, urlRegEx);
                 p.Assert();
 
-                // --> Protocollo di sicurezza https://
                 ServicePointManager.SecurityProtocol = (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
 
                 using (WebClient wc = new WebClient())
